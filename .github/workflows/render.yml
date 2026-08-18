@@ -11,8 +11,8 @@ on:
 
 jobs:
   render:
-    runs-on: ubuntu-latest
-    
+    runs-on: ubuntu-22.04  # v3 起：避免 24.04 libasound2 问题
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,22 +20,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser ffmpeg fonts-noto-cjk
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium  # runner 已预装系统依赖，无需 --with-deps
+
+      - name: Install ffprobe-static
+        run: npm install ffprobe-static --no-save
 
       - name: Render wedding video
-        run: npx remotion render src/index.ts wedding-opening out/video.mp4 --browser-executable=$(which chromium-browser) --concurrency=2
-        env:
-          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
-          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
+        run: |
+          CHROME=$(find "$HOME/.cache/ms-playwright" -name chrome -type f | head -1)
+          FFMPEG=$(node -e "console.log(require('ffmpeg-static'))")
+          FFPROBE=$(node -e "console.log(require('ffprobe-static').path)")
+          sudo ln -sf "$FFMPEG" /usr/local/bin/ffmpeg
+          sudo ln -sf "$FFPROBE" /usr/local/bin/ffprobe
+          npx remotion render src/index.ts wedding-opening out/video.mp4 \
+            --browser-executable="$CHROME" --ffmpeg-executable="$FFMPEG" \
+            --ffprobe-executable="$FFPROBE" --concurrency=2
 
       - name: Upload video artifact
         uses: actions/upload-artifact@v4
