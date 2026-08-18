@@ -1,0 +1,11 @@
+node_modules/
+out/
+.git/
+*.md
+!.dockerignore
+Dockerfile
+docker-render.sh
+render-v4.sh
+fix-and-render.sh
+public/photos/photo-*.jpeg
+public/audio/bgm-placeholder.wav
